@@ -127,19 +127,26 @@ export class PasswordsService {
         // keep url as title if parsing fails
       }
 
-      const created = await this.prisma.password.create({
-        data: {
-          userId,
-          title,
-          url: url || null,
-          username: username || null,
-          encryptedPassword: password,
-          encryptedNotes: comment || null,
-        },
-        include: { tags: { include: { tag: true } }, folder: true },
-      });
+      try {
+        const created = await this.prisma.password.create({
+          data: {
+            userId,
+            title,
+            url: url || null,
+            username: username || null,
+            encryptedPassword: password,
+            encryptedNotes: comment || null,
+          },
+          include: { tags: { include: { tag: true } }, folder: true },
+        });
 
-      results.push(created);
+        results.push(created);
+      } catch (error) {
+        if (error?.code === 'P2002') {
+          continue; // skip duplicates
+        }
+        throw error;
+      }
     }
 
     return { imported: results.length, passwords: results };
