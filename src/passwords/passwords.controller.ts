@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,10 +10,15 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -36,6 +42,34 @@ export class PasswordsController {
   @ApiResponse({ status: 201, description: 'Password created' })
   create(@CurrentUser('id') userId: string, @Body() dto: CreatePasswordDto) {
     return this.passwords.create(userId, dto);
+  }
+
+  @Post('import/csv')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Import passwords from a CSV file' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Passwords imported successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid CSV format' })
+  importCsv(
+    @CurrentUser('id') userId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('CSV file is required');
+    }
+    return this.passwords.importCsv(userId, file.buffer);
   }
 
   @Get()
