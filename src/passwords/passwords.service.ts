@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma';
 import { CreatePasswordDto, UpdatePasswordDto } from './dto';
+import { encrypt } from '../utils/crypto';
 
 @Injectable()
 export class PasswordsService {
@@ -96,7 +97,12 @@ export class PasswordsService {
     await this.prisma.password.delete({ where: { id } });
   }
 
-  async importCsv(userId: string, fileBuffer: Buffer) {
+  async importCsv(
+    userId: string,
+    fileBuffer: Buffer,
+    masterPassword: string,
+    salt: string,
+  ) {
     const content = fileBuffer.toString('utf-8').trim();
     const lines = content.split(/\r?\n/);
 
@@ -128,13 +134,14 @@ export class PasswordsService {
       }
 
       try {
+        const encryptedPassword = await encrypt(password, masterPassword, salt);
         const created = await this.prisma.password.create({
           data: {
             userId,
             title,
             url: url || null,
             username: username || null,
-            encryptedPassword: password,
+            encryptedPassword,
             encryptedNotes: comment || null,
           },
           include: { tags: { include: { tag: true } }, folder: true },

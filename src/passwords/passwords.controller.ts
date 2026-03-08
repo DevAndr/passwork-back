@@ -65,11 +65,21 @@ export class PasswordsController {
   importCsv(
     @CurrentUser('id') userId: string,
     @UploadedFile() file: Express.Multer.File,
+    @Body('masterPassword') masterPassword: string,
+    @Body('salt') salt: string,
   ) {
     if (!file) {
       throw new BadRequestException('CSV file is required');
     }
-    return this.passwords.importCsv(userId, file.buffer);
+
+    if (!masterPassword) {
+      throw new BadRequestException('masterPassword is required');
+    }
+
+    if (!file) {
+      throw new BadRequestException('salt is required');
+    }
+    return this.passwords.importCsv(userId, file.buffer, masterPassword, salt);
   }
 
   @Get()
